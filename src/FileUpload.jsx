@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { toast, ToastContainer } from 'react-toastify'; // Import Toastify
 import 'react-toastify/dist/ReactToastify.css'; // Import Toastify styles
+import axios from 'axios';
 
 const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -53,42 +54,50 @@ const FileUpload = () => {
       setError('Please fill in both title and description');
       return;
     }
-
+  
     setLoading(true);
     console.log('Uploading file:', selectedFile);
     console.log('Class Name:', class_name);
-    console.log('item type:', item_type);
-
-    const formData = new FormData();
-
-    formData.append('file', selectedFile);
-    formData.append('class_name', class_name);
-    formData.append('item_type', item_type);
-
-    try {
-      // Send the form data to the backend using fetch
-      const response = await fetch('https://backend.angeloantu.online/upload-data-video', {
-        method: 'POST',
-        body: formData,
-      });
+    console.log('Item Type:', item_type);
   
-      // Check if the upload was successful
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(`File uploaded successfully! ${selectedFile.name}`);
-      } else {
-        setError('File upload failed!');
-        toast.error('File upload failed!');
+    // Convert the selected file to a base64-encoded string
+    const fileReader = new FileReader();
+    fileReader.readAsDataURL(selectedFile);  // Read the file as a base64-encoded string
+  
+    fileReader.onloadend = async () => {
+      const base64File = fileReader.result.split(',')[1]; // Remove the "data:image/png;base64," part
+      const formData = {
+        body: base64File, // Send base64-encoded file as the body
+        object_name: class_name
+      };
+  
+      try {
+        // Send the base64 file data to the backend using axios
+        const response = await axios.post('https://vcdqhbkuj7.execute-api.ap-south-1.amazonaws.com/default/video_upload', formData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+    
+  
+        // Check if the upload was successful
+        if (response.status === 200) {
+          toast.success(`File uploaded successfully! ${selectedFile.name}`);
+        } else {
+          setError('File upload failed!');
+          toast.error('File upload failed!');
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        setError('An error occurred while uploading the file.');
+        toast.error('An error occurred while uploading the file.');
+      } finally {
+        // Set loading state to false once the request is complete
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      setError('An error occurred while uploading the file.');
-      toast.error('An error occurred while uploading the file.');
-    } finally {
-      // Set loading state to false once the request is complete
-      setLoading(false);
-    }
+    };
   };
+   
 
   return (
     <div className="py-4 mx-auto my-auto text-white rounded-lg bg-neutral-700 w-[300px] md:w-1/2 lg:w-1/4">
