@@ -33,7 +33,12 @@ const Nav=()=>{
 
                     <li>
                         <Link to="/upload" onClick={() => handleClick("/upload")}>
-                        Upload File
+                        Upload Video
+                        </Link>
+                    </li>
+                    <li>
+                        <Link to="/data-analysis" onClick={() => handleClick("/data-analysis")}>
+                        Dataset Analysis
                         </Link>
                     </li>
                 </ul>
