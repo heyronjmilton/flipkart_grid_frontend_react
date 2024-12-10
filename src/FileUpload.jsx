@@ -7,7 +7,7 @@ const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [class_name, setClassName] = useState(''); 
+  let [class_name, setClassName] = useState(''); 
   const [item_type, setItemType] = useState(''); 
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +50,9 @@ const FileUpload = () => {
       setError('Please select a file first');
       return;
     }
-    if (!class_name || !item_type) {
+    class_name = class_name.trim(); // Remove leading and trailing spaces
+
+    if (!class_name || !/^[A-Za-z]+$/.test(class_name) || !item_type || !item_type.trim()) {
       setError('Please fill in both title and description');
       return;
     }
