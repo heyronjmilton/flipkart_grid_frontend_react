@@ -120,7 +120,6 @@ const FileUpload = () => {
       >
         <option value="" disabled>Select Type</option>
         <option value="packed">Packed</option>
-        <option value="fruits">Fruits</option>
       </select>
 
       {/* File input */}
