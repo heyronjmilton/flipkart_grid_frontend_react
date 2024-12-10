@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
+import axios from "axios";
 
-const Fruits = () => {
+const Packet = () => {
   const videoRef = useRef(null);
   const receiveRef = useRef(null)
   const [showPrompt, setShowPrompt] = useState(true)
@@ -10,14 +11,49 @@ const Fruits = () => {
   const [isOn, setIsOn] = useState(false);
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [batchName, setBatchName] = useState("");
+  const [reportAvailable, setReportAvailable] = useState(false);
     useEffect(()=>{
         
     })
 
-
     const handleClosePopup = () => {
       setPopupVisible(false); // Hide the popup
     };
+
+
+    const downloadXlsx = async () => {
+      try {
+        // Validate the file name
+        
+        
+        // Make the API request to download the file
+        const response = await axios.get(`https://backend.angeloantu.online/download-report`, {
+          params: { batch_name: batchName,
+            tasktype: "packed"
+           },
+          responseType: "blob", // Ensures the file is handled as a binary stream
+        });
+    
+        // Create a URL for the file blob
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${batchName}.xlsx`); // Set the file name
+        document.body.appendChild(link);
+        link.click();
+    
+        // Clean up the link
+        link.parentNode.removeChild(link);
+      } catch (error) {
+        console.error("Error downloading file:", error);
+        alert(
+          error.response?.data?.detail ||
+            "An error occurred while downloading the file."
+        );
+      }
+    };
+
 
 
   const startCamera = async () => {
@@ -49,51 +85,52 @@ const Fruits = () => {
         }
     };
 
-    
-  
-    async function sendFeedToServer(video) {
+async function sendFeedToServer(video) {
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       let feedwebsocket, objectwebsocket;
-      const reconnectInterval = 100; // 500 ms
+      const reconnectInterval = 500; // 500 ms
   
-function connectFeedWebSocket() {
-          feedwebsocket = new WebSocket(`wss://backend.angeloantu.online/ws/camera_feed_fruit`);
-          
-          feedwebsocket.onopen = () => {
-              console.log('Feed WebSocket connected');
-              setInterval(() => {
-                  if (video.readyState === 4 && video.videoWidth && video.videoHeight) {
-                      canvas.width = video.videoWidth;
-                      canvas.height = video.videoHeight;
-                      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                      const imageData = canvas.toDataURL('image/jpeg'); // Capture frame as JPEG
-  
-                      // Send the image data to the WebSocket server
-                      if (feedwebsocket.readyState === WebSocket.OPEN) {
-                          feedwebsocket.send(imageData);
-                      }
-                  }
-              }, 100); // Capture and send at a delay
-          };
-  
-          feedwebsocket.onerror = (error) => {
-              console.error('Feed WebSocket error:', error);
-          };
-  
-          feedwebsocket.onclose = () => {
-              console.log('Feed WebSocket connection closed. Reconnecting...');
-              setTimeout(connectFeedWebSocket, reconnectInterval);
-          };
-  
-          feedwebsocket.onmessage = (event) => {
-              // Set the source of the img element to the received image
-              // const imageFeed = document.getElementById('cameraFeed');
-              const base64Image = event.data
-              receiveRef.current.src = base64Image;; // Set the source to the received image
-          };
-      }
-  
+  function connectFeedWebSocket() {
+            feedwebsocket = new WebSocket(`wss://backend.angeloantu.online/ws/camera_feed_fruit`);
+            
+            feedwebsocket.onopen = () => {
+                console.log('Feed WebSocket connected');
+                setInterval(() => {
+                    if (video.readyState === 4 && video.videoWidth && video.videoHeight) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = canvas.toDataURL('image/jpeg'); // Capture frame as JPEG
+    
+                        // Send the image data to the WebSocket server
+                        if (feedwebsocket.readyState === WebSocket.OPEN) {
+                            feedwebsocket.send(imageData);
+                        }
+                    }
+                }, 150); // Capture and send at a delay
+            };
+    
+            feedwebsocket.onerror = (error) => {
+                console.error('Feed WebSocket error:', error);
+            };
+    
+            feedwebsocket.onclose = () => {
+                console.log('Feed WebSocket connection closed. Reconnecting...');
+                setTimeout(connectFeedWebSocket, reconnectInterval);
+            };
+    
+            feedwebsocket.onmessage = (event) => {
+                // Set the source of the img element to the received image
+                // const imageFeed = document.getElementById('cameraFeed');
+                const base64Image = event.data
+                if (receiveRef.current){
+
+                  receiveRef.current.src = base64Image;; // Set the source to the received image
+                }
+            };
+        }
+    
       function connectObjectWebSocket() {
           objectwebsocket = new WebSocket(`wss://backend.angeloantu.online/ws/fruits`);
   
@@ -112,10 +149,18 @@ function connectFeedWebSocket() {
   
          
             objectwebsocket.onmessage = (event) => {
-            console.log("items data :",event.data);
+            // console.log("items data :",event.data);
             try {
-              const newItem = JSON.parse(event.data)
-              setItems(newItem)
+              const data = JSON.parse(event.data)
+
+              console.log(data)
+
+              if(data['report_generated'] == true) {
+                setReportAvailable(true);
+              }
+
+              // const newItem = data['details'];
+              // setItems(newItem)
               // console.log(items)
             } catch (error) {
               console.log(error)
@@ -129,14 +174,13 @@ function connectFeedWebSocket() {
       connectObjectWebSocket();
   }
 
+
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = videoRef.current.srcObject.getTracks();
       tracks.forEach((track) => track.stop());
       videoRef.current.srcObject = null;
-      receiveRef.current.src=null;
-      // feedwebsocket.close();
-      // objectwebsocket.close();
+      receiveRef.current.src=null
       // setCameraOn(false);
     }
   };
@@ -145,10 +189,10 @@ function connectFeedWebSocket() {
     setIsOn((prevState) => !prevState);
   };
 
-
   const onSensorOn = () => {
     const res = fetch("https://backend.angeloantu.online/set-in-sensor?value=1");
-    console.log("sensor on \n");
+    console.log("sensor on \n",res);
+    setReportAvailable(false);
   }
 
   const onSensorOff = () => {
@@ -157,6 +201,7 @@ function connectFeedWebSocket() {
   }
 
   const onReset = () => {
+    const res = fetch("https://backend.angeloantu.online/reset-detection");
     console.log("RESET DETECTION");
   }
 
@@ -184,9 +229,9 @@ function connectFeedWebSocket() {
       }
     });
     console.log("report generation request")
+    setBatchName(batchName);
     setPopupVisible(false);
   }
-  
 
   return (
     <div className='p-2 md:p-4'>
@@ -210,7 +255,7 @@ function connectFeedWebSocket() {
       }
          
       
-         {
+      {
         cameraOn &&
         
          <div className='flex flex-col md:flex-row'>
@@ -262,10 +307,24 @@ function connectFeedWebSocket() {
                     {isOn ? 'HARDWARE ON' : 'HARDWARE OFF'}
                   </button>
                   </div>
+                  
+                    <div className='flex flex-row'>
 
                   <button className="bg-[#2563EB] px-2 py-2 text-white ml-4 w-1/2 md:w-1/4 text-xs md:text-lg font-bold rounded-lg transition-colors" onClick={onFinish} >
                   Finish
                 </button>
+                {reportAvailable &&
+
+                  <button
+                  
+                    onClick={downloadXlsx}
+                    className={` px-2 py-2 text-white ml-4 w-1/2 md:w-1/4 text-xs md:text-lg font-bold rounded-lg transition-colors ${reportAvailable ? 'bg-green-700' : 'bg-gray-700'} `}>
+                      Download Report
+                  </button>
+                }
+
+                    </div>
+                
                 </div>
                
                 </div>
@@ -289,7 +348,7 @@ function connectFeedWebSocket() {
                               <div key={index+1} className='text-white font-semibold text-xl lg:text-2xl p-1'>
                                 <h1>
                                   {index+1}.
-                                  {item['object_name']} 
+                                  {item['object_name'].split("#")[0]} 
                                   </h1>
                                 <h1 className='ml-2'><span className='font-normal text-xl'>EXPIRY:</span> {item['expiry']}</h1>
                                 <h1 className='ml-2'><span className='font-normal text-xl'>MFG:</span>{item['mfg']}</h1>
@@ -302,6 +361,7 @@ function connectFeedWebSocket() {
                             )
                     }
 
+                 
                 </div>
                 </div>
             </div>
@@ -311,9 +371,8 @@ function connectFeedWebSocket() {
                
           </div>
       }
-      {/* test */}
 
-      {isPopupVisible && (
+{isPopupVisible && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Complete Your Report Details</h2>
@@ -357,4 +416,4 @@ function connectFeedWebSocket() {
   );
 };
 
-export default Fruits;
+export default Packet;

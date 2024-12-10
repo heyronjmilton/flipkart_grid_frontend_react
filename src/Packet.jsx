@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import axios from "axios";
 
 const Packet = () => {
   const videoRef = useRef(null);
@@ -10,14 +11,47 @@ const Packet = () => {
   const [isOn, setIsOn] = useState(false);
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-
+  const [batchName, setBatchName] = useState("");
+  const [reportAvailable, setReportAvailable] = useState(false);
     useEffect(()=>{
         
     })
 
     const handleClosePopup = () => {
       setPopupVisible(false); // Hide the popup
+    };
+
+
+    const downloadXlsx = async () => {
+      try {
+        // Validate the file name
+        
+        
+        // Make the API request to download the file
+        const response = await axios.get(`https://backend.angeloantu.online/download-report`, {
+          params: { batch_name: batchName,
+            tasktype: "packed"
+           },
+          responseType: "blob", // Ensures the file is handled as a binary stream
+        });
+    
+        // Create a URL for the file blob
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${batchName}.xlsx`); // Set the file name
+        document.body.appendChild(link);
+        link.click();
+    
+        // Clean up the link
+        link.parentNode.removeChild(link);
+      } catch (error) {
+        console.error("Error downloading file:", error);
+        alert(
+          error.response?.data?.detail ||
+            "An error occurred while downloading the file."
+        );
+      }
     };
 
 
@@ -74,7 +108,7 @@ async function sendFeedToServer(video) {
                             feedwebsocket.send(imageData);
                         }
                     }
-                }, 100); // Capture and send at a delay
+                }, 150); // Capture and send at a delay
             };
     
             feedwebsocket.onerror = (error) => {
@@ -118,6 +152,11 @@ async function sendFeedToServer(video) {
             // console.log("items data :",event.data);
             try {
               const data = JSON.parse(event.data)
+
+              if(data['report_generated'] == true) {
+                setReportAvailable(true);
+              }
+
               const newItem = data['details'];
               setItems(newItem)
               // console.log(items)
@@ -151,6 +190,7 @@ async function sendFeedToServer(video) {
   const onSensorOn = () => {
     const res = fetch("https://backend.angeloantu.online/set-in-sensor?value=1");
     console.log("sensor on \n",res);
+    setReportAvailable(false);
   }
 
   const onSensorOff = () => {
@@ -187,6 +227,7 @@ async function sendFeedToServer(video) {
       }
     });
     console.log("report generation request")
+    setBatchName(batchName);
     setPopupVisible(false);
   }
 
@@ -264,10 +305,24 @@ async function sendFeedToServer(video) {
                     {isOn ? 'HARDWARE ON' : 'HARDWARE OFF'}
                   </button>
                   </div>
+                  
+                    <div className='flex flex-row'>
 
                   <button className="bg-[#2563EB] px-2 py-2 text-white ml-4 w-1/2 md:w-1/4 text-xs md:text-lg font-bold rounded-lg transition-colors" onClick={onFinish} >
                   Finish
                 </button>
+                {reportAvailable &&
+
+                  <button
+                  
+                    onClick={downloadXlsx}
+                    className={` px-2 py-2 text-white ml-4 w-1/2 md:w-1/4 text-xs md:text-lg font-bold rounded-lg transition-colors ${reportAvailable ? 'bg-green-700' : 'bg-gray-700'} `}>
+                      Download Report
+                  </button>
+                }
+
+                    </div>
+                
                 </div>
                
                 </div>
