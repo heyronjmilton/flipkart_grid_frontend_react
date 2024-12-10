@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
+import { toast, ToastContainer } from 'react-toastify'; // Import Toastify
+import 'react-toastify/dist/ReactToastify.css'; // Import Toastify styles
 
 const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [class_name, setClassName] = useState(''); 
+  const [item_type, setItemType] = useState(''); 
+  const [loading, setLoading] = useState(false);
+
 
   // Handle file change
   const handleFileChange = (event) => {
@@ -37,27 +43,83 @@ const FileUpload = () => {
     setPreviewUrl(URL.createObjectURL(file));
   };
 
-  // Handle file upload (mock upload for demonstration)
-  const handleUpload = () => {
+  
+  const handleUpload = async () => {
     if (!selectedFile) {
       setError('Please select a file first');
       return;
     }
+    if (!class_name || !item_type) {
+      setError('Please fill in both title and description');
+      return;
+    }
 
-    // Mock upload logic
+    setLoading(true);
     console.log('Uploading file:', selectedFile);
-    alert(`File "${selectedFile.name}" uploaded successfully!`);
+    console.log('Class Name:', class_name);
+    console.log('item type:', item_type);
+
+    const formData = new FormData();
+
+    formData.append('file', selectedFile);
+    formData.append('class_name', class_name);
+    formData.append('item_type', item_type);
+
+    try {
+      // Send the form data to the backend using fetch
+      const response = await fetch('https://backend.angeloantu.online/upload-data-video', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      // Check if the upload was successful
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`File uploaded successfully! ${selectedFile.name}`);
+      } else {
+        setError('File upload failed!');
+        toast.error('File upload failed!');
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setError('An error occurred while uploading the file.');
+      toast.error('An error occurred while uploading the file.');
+    } finally {
+      // Set loading state to false once the request is complete
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="py-4  mx-auto my-auto text-white rounded-lg bg-neutral-700 w-[300px] md:w-1/2 lg:w-1/4 ">
+    <div className="py-4 mx-auto my-auto text-white rounded-lg bg-neutral-700 w-[300px] md:w-1/2 lg:w-1/4">
       <h2 className="text-3xl p-4 font-bold mb-4 text-white">MP4 File Uploader</h2>
 
+      {/* Title input */}
+      <input
+        type="text"
+        placeholder="Enter Class Name"
+        value={class_name}
+        onChange={(e) => setClassName(e.target.value)}
+        className="mb-4 p-2 w-3/4 rounded bg-neutral-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+
+      {/* Description input */}
+      <select
+        value={item_type}
+        onChange={(e) => setItemType(e.target.value)}
+        className="mb-4 p-2 w-3/4 rounded bg-neutral-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="" disabled>Select Type</option>
+        <option value="packed">Packed</option>
+        <option value="fruits">Fruits</option>
+      </select>
+
+      {/* File input */}
       <input
         type="file"
         accept="video/mp4"
         onChange={handleFileChange}
-        className="mb-4"
+        className="mb-4 p-2 w-3/4 rounded bg-neutral-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
       {error && <p className="text-red-500 font-semibold mb-2">{error}</p>}
@@ -75,10 +137,19 @@ const FileUpload = () => {
 
       <button
         onClick={handleUpload}
-        className="bg-[#2563EB] hover:bg-blue-600 w-1/2 text-white font-bold py-2 px-4 rounded"
+        className={` w-1/2 text-white font-bold py-2 px-4 rounded  ${loading ? 'bg-gray-900':'bg-[#2563EB]'}`}
       >
-        Upload
+        {loading ? 'Uploading...' : 'Upload'}
       </button>
+
+      <ToastContainer
+        position="top-right" // Position where notifications appear
+        autoClose={5000} // Duration for which the notification will appear (in ms)
+        hideProgressBar={true} // Hide progress bar
+        newestOnTop={true} // Display newest notifications on top
+        closeButton={true} // Allow users to manually close the notification
+        rtl={false} // If you need RTL support, set it to true
+      />
     </div>
   );
 };

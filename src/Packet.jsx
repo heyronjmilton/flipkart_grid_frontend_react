@@ -1,5 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import axios from "axios";
+import { toast, ToastContainer } from 'react-toastify'; // Import Toastify
+import 'react-toastify/dist/ReactToastify.css'; // Import Toastify styles
 
 const Packet = () => {
   const videoRef = useRef(null);
@@ -85,13 +87,17 @@ const Packet = () => {
         }
     };
 
-async function sendFeedToServer(video) {
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-      let feedwebsocket, objectwebsocket;
-      const reconnectInterval = 500; // 500 ms
-  
-  function connectFeedWebSocket() {
+
+    const hasShownUpdate = useRef(false);
+    const shownNameDetection = useRef(false);
+    const shownProductUpdate = useRef(false);
+    async function sendFeedToServer(video) {
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
+            let feedwebsocket, objectwebsocket;
+            const reconnectInterval = 500; // 500 ms
+            
+            function connectFeedWebSocket() {
             feedwebsocket = new WebSocket(`wss://backend.angeloantu.online/ws/camera_feed_expiry`);
             
             feedwebsocket.onopen = () => {
@@ -147,22 +153,35 @@ async function sendFeedToServer(video) {
               setTimeout(connectObjectWebSocket, reconnectInterval);
           };
   
-         
+          
             objectwebsocket.onmessage = (event) => {
             // console.log("items data :",event.data);
             try {
               const data = JSON.parse(event.data)
-
-              if(data['report_generated'] == true) {
-                setReportAvailable(true);
+              console.log(`name detection : ${data['name_detection']}  shown_detection:${shownNameDetection.current}`)
+              if(!data['name_detection'] && !shownNameDetection.current) {
+                toast.success("PRODUCT NAME DETECTED, SHOW EXPIRY");
+                shownNameDetection.current = true;
               }
+              
+              if(!data['name_detection'] && !data['in_sensor'] && !shownProductUpdate.current) {
+                toast.success("PRODUCT DETECTED");
+                shownProductUpdate.current = true;
+              }
+
+              if (data['report_generated'] && !hasShownUpdate.current) {
+                toast.success("REPORT IS READY TO DOWNLOAD");
+                setReportAvailable(true);
+                hasShownUpdate.current = true;  // Prevents the toast from showing again
+              }
+              
 
               const newItem = data['details'];
               setItems(newItem)
               // console.log(items)
             } catch (error) {
               console.log(error)
-            }
+          }
          
      }
       }
@@ -189,24 +208,34 @@ async function sendFeedToServer(video) {
 
   const onSensorOn = () => {
     const res = fetch("https://backend.angeloantu.online/set-in-sensor?value=1");
+    shownNameDetection.current = false;
+    toast.success("SENSOR IS ON");
     console.log("sensor on \n",res);
     setReportAvailable(false);
   }
 
   const onSensorOff = () => {
     const res = fetch("https://backend.angeloantu.online/set-in-sensor?value=0");
+    toast.success("SENSOR IS OFF");
+    // shownNameDetection.current = false;
+    shownProductUpdate.current = false;
     console.log("sensor off");
   }
 
   const onReset = () => {
     const res = fetch("https://backend.angeloantu.online/reset-detection");
+    toast.success("DETECTION RESET");
     console.log("RESET DETECTION");
+    hasShownUpdate.current = false;
+    shownNameDetection.current = false;
+    shownProductUpdate.current = false;
+    // window.location.reload();
   }
 
   const onFinish = () => {
     setPopupVisible(true);
     stopCamera();
-    console.log("TASK FINISHED");
+    toast.success("TASK FINISHED");
   }
 
   const handleFormSubmit = async (e) => {
@@ -226,7 +255,7 @@ async function sendFeedToServer(video) {
         'Content-Type': 'application/json',
       }
     });
-    console.log("report generation request")
+    toast.success("REPORT GENERATION UNDER PROGRESS");
     setBatchName(batchName);
     setPopupVisible(false);
   }
@@ -328,10 +357,12 @@ async function sendFeedToServer(video) {
                 </div>
 
                 <div className='flex flex-col md:flex-row'>
-                  <img
+                <img
                     ref={receiveRef}
-                    className="bg-neutral-700 w-3/4 h-[500px] my-2 object-cover rounded-md border-2 w-screen flex flex-wrap"
+                    className="bg-neutral-700 w-screen max-h-[500px] my-2 object-contain rounded-md border-2"
                   />
+
+
 
                  
                   <div className='mx-auto sm:mx-2 md:ml-6 bg-neutral-700 w-full md:w-1/5 
@@ -409,6 +440,15 @@ async function sendFeedToServer(video) {
         </div>
       )}
 
+
+    <ToastContainer
+        position="top-right" // Position where notifications appear
+        autoClose={5000} // Duration for which the notification will appear (in ms)
+        hideProgressBar={true} // Hide progress bar
+        newestOnTop={true} // Display newest notifications on top
+        closeButton={true} // Allow users to manually close the notification
+        rtl={false} // If you need RTL support, set it to true
+      />
 
     </div>
   );
