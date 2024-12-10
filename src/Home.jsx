@@ -20,7 +20,7 @@ function Home(){
 
             <button className="bg-[#2563EB] w-40 rounded-lg text-2xl font-bold">
                 <Link to="/upload">
-                    Upload Video
+                    Add New Class
                 </Link>
             </button>
         </div>

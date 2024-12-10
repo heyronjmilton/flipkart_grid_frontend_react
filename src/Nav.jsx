@@ -33,7 +33,7 @@ const Nav=()=>{
 
                     <li>
                         <Link to="/upload" onClick={() => handleClick("/upload")}>
-                        Upload Video
+                        Add New Class
                         </Link>
                     </li>
                     <li>
