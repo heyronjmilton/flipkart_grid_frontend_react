@@ -1,5 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import axios from "axios";
+import { toast, ToastContainer } from 'react-toastify'; // Import Toastify
+import 'react-toastify/dist/ReactToastify.css'; // Import Toastify styles
+
 
 const Packet = () => {
   const videoRef = useRef(null);
@@ -7,12 +10,18 @@ const Packet = () => {
   const [showPrompt, setShowPrompt] = useState(true)
   const [cameraOn, setCameraOn] = useState(false);
   const canvasRef = useRef(null); 
-  const[items, setItems] = useState([])
+  const[items, setItems] = useState([]);
+  const[currentItems, setCurrentItems] = useState([]);
   const [isOn, setIsOn] = useState(false);
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [batchName, setBatchName] = useState("");
   const [reportAvailable, setReportAvailable] = useState(false);
+
+  const countRef = useRef(0);
+  const currentCountRef = useRef(0);
+  const hasShownUpdate = useRef(false);
+
     useEffect(()=>{
         
     })
@@ -30,7 +39,7 @@ const Packet = () => {
         // Make the API request to download the file
         const response = await axios.get(`https://backend.angeloantu.online/download-report`, {
           params: { batch_name: batchName,
-            tasktype: "packed"
+            tasktype: "fruit"
            },
           responseType: "blob", // Ensures the file is handled as a binary stream
         });
@@ -54,6 +63,7 @@ const Packet = () => {
       }
     };
 
+    
 
 
   const startCamera = async () => {
@@ -95,7 +105,7 @@ async function sendFeedToServer(video) {
             feedwebsocket = new WebSocket(`wss://backend.angeloantu.online/ws/camera_feed_fruit`);
             
             feedwebsocket.onopen = () => {
-                console.log('Feed WebSocket connected');
+                console.log('Feed WebSocket connected for fruit');
                 setInterval(() => {
                     if (video.readyState === 4 && video.videoWidth && video.videoHeight) {
                         canvas.width = video.videoWidth;
@@ -153,14 +163,24 @@ async function sendFeedToServer(video) {
             try {
               const data = JSON.parse(event.data)
 
-              console.log(data)
+              console.log("saved data",data['details']);
+              console.log("report_generated",data['report_generated']);
+              console.log("curent details",data['current_details']);
+              console.log("curent details count",data['current_count']);
 
-              if(data['report_generated'] == true) {
+              if(data['report_generated'] && !hasShownUpdate.current) {
+                toast.success("REPORT READY TO DOWNLOAD");
                 setReportAvailable(true);
+                hasShownUpdate.current = true;
+                
               }
-
-              // const newItem = data['details'];
-              // setItems(newItem)
+              countRef.current = data['count'];
+              currentCountRef.current = data['current_count'];
+              console.log(data['count']);
+              const newItem = data['details'];
+              const currentItems = data['current_details'];
+              setItems(newItem)
+              setCurrentItems(currentItems);
               // console.log(items)
             } catch (error) {
               console.log(error)
@@ -193,22 +213,28 @@ async function sendFeedToServer(video) {
     const res = fetch("https://backend.angeloantu.online/set-in-sensor?value=1");
     console.log("sensor on \n",res);
     setReportAvailable(false);
+    toast.success("Sensor On");
+    hasShownUpdate.current = false;
   }
 
   const onSensorOff = () => {
     const res = fetch("https://backend.angeloantu.online/set-in-sensor?value=0");
     console.log("sensor off");
+    toast.success("Sensor Off");
   }
 
   const onReset = () => {
     const res = fetch("https://backend.angeloantu.online/reset-detection");
     console.log("RESET DETECTION");
+    toast.success("Reset Detection");
+    hasShownUpdate.current = false;
   }
 
   const onFinish = () => {
     setPopupVisible(true);
     stopCamera();
     console.log("TASK FINISHED");
+    toast.success("Task Finished");
   }
 
   const handleFormSubmit = async (e) => {
@@ -228,10 +254,11 @@ async function sendFeedToServer(video) {
         'Content-Type': 'application/json',
       }
     });
-    console.log("report generation request")
+    toast.success("REPORT GENERATION UNDER PROGRESS");
     setBatchName(batchName);
     setPopupVisible(false);
   }
+
 
   return (
     <div className='p-2 md:p-4'>
@@ -330,9 +357,9 @@ async function sendFeedToServer(video) {
                 </div>
 
                 <div className='flex flex-col md:flex-row'>
-                  <img
+                <img
                     ref={receiveRef}
-                    className="bg-neutral-700 w-3/4 h-[500px] my-2 object-cover rounded-md border-2 w-screen flex flex-wrap"
+                    className="bg-neutral-700 w-screen max-h-[500px] my-2 object-contain rounded-md border-2"
                   />
 
                  
@@ -340,29 +367,47 @@ async function sendFeedToServer(video) {
                    rounded-xl shadow-lg overflow-y-auto item text-left
                    shadow-black p-2 h-[250px] md:h-[450px] my-auto 
                    '>
-                    <h1 className='font-bold text-white text-2xl md:text-3xl text-center font-extrabold my-2'>Item List</h1>
-                    <h1 className='text-white text-center text-md md:text-2xl font-bold flex-wrap'>Count: {items.length}</h1>
-                    {
-                        items.length > 0 ? (
-                            items.map((item, index) => (
-                              <div key={index+1} className='text-white font-semibold text-xl lg:text-2xl p-1'>
+                    <h1 className='font-bold text-white text-2xl md:text-3xl text-center font-extrabold my-2'>Previous Scanned Items</h1>
+                    <h1 className='text-white text-center text-md md:text-2xl font-bold flex-wrap'>Count: {countRef.current}</h1>
+                    {Object.entries(items).length > 0 ? (
+                            Object.entries(items).map(([item, quantity], index) => (
+                              <div key={index} className="text-white font-semibold text-xl lg:text-2xl p-1">
                                 <h1>
-                                  {index+1}.
-                                  {item['object_name'].split("#")[0]} 
-                                  </h1>
-                                <h1 className='ml-2'><span className='font-normal text-xl'>EXPIRY:</span> {item['expiry']}</h1>
-                                <h1 className='ml-2'><span className='font-normal text-xl'>MFG:</span>{item['mfg']}</h1>
-                                <h1 className='ml-2'><span className='font-normal text-xl'>BATCH NO:</span>{item['batch_no']}</h1>
+                                  {index + 1}. {item.replace('_', ' ')}
+                                </h1>
+                                <h1 className="ml-2">
+                                  <span className="font-normal text-xl">Quantity:</span> {quantity}
+                                </h1>
                               </div>
-                            )
-                          )
-                            ) : (
-                                <p className='text-xl my-2 text-white'>No items received yet.</p>
-                            )
-                    }
-
-                 
+                            ))
+                          ) : (
+                            <p className="text-xl my-2 text-white">No items received yet.</p>
+                          )}                 
                 </div>
+
+                <div className='mx-auto sm:mx-2 md:ml-6 bg-neutral-700 w-full md:w-1/5 
+                   rounded-xl shadow-lg overflow-y-auto item text-left
+                   shadow-black p-2 h-[250px] md:h-[450px] my-auto 
+                   '>
+                    <h1 className='font-bold text-white text-2xl md:text-3xl text-center font-extrabold my-2'>Current Scanned Items</h1>
+                    <h1 className='text-white text-center text-md md:text-2xl font-bold flex-wrap'>Count: {currentCountRef.current}</h1>
+                    {Object.entries(currentItems).length > 0 ? (
+                            Object.entries(currentItems).map(([item, quantity], index) => (
+                              <div key={index} className="text-white font-semibold text-xl lg:text-2xl p-1">
+                                <h1>
+                                  {index + 1}. {item.replace('_', ' ')}
+                                </h1>
+                                <h1 className="ml-2">
+                                  <span className="font-normal text-xl">Quantity:</span> {quantity}
+                                </h1>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-xl my-2 text-white">No items received yet.</p>
+                          )}                 
+                </div>
+
+
                 </div>
             </div>
 
@@ -411,6 +456,14 @@ async function sendFeedToServer(video) {
         </div>
       )}
 
+<ToastContainer
+        position="top-right" // Position where notifications appear
+        autoClose={5000} // Duration for which the notification will appear (in ms)
+        hideProgressBar={true} // Hide progress bar
+        newestOnTop={true} // Display newest notifications on top
+        closeButton={true} // Allow users to manually close the notification
+        rtl={false} // If you need RTL support, set it to true
+      />
 
     </div>
   );

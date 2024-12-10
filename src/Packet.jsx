@@ -26,7 +26,6 @@ const Packet = () => {
 
     const downloadXlsx = async () => {
       try {
-        // Validate the file name
         
         
         // Make the API request to download the file
