@@ -159,14 +159,11 @@ const Packet = () => {
               const data = JSON.parse(event.data)
               console.log(`name detection : ${data['name_detection']}  shown_detection:${shownNameDetection.current}`)
               if(!data['name_detection'] && !shownNameDetection.current) {
-                toast.success("PRODUCT NAME DETECTED, SHOW EXPIRY");
+                toast.success(`PRODUCT NAME ${data['product_name']}, SHOW EXPIRY`);
                 shownNameDetection.current = true;
               }
               
-              if(!data['name_detection'] && !data['in_sensor'] && !shownProductUpdate.current) {
-                toast.success("PRODUCT DETECTED");
-                shownProductUpdate.current = true;
-              }
+              
 
               if (data['report_generated'] && !hasShownUpdate.current) {
                 toast.success("REPORT IS READY TO DOWNLOAD");
