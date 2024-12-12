@@ -158,7 +158,7 @@ const Packet = () => {
             try {
               const data = JSON.parse(event.data)
               console.log(`name detection : ${data['name_detection']}  shown_detection:${shownNameDetection.current}`)
-              if(!data['name_detection'] && !shownNameDetection.current && !data['product_name']) {
+              if(!data['name_detection'] && !shownNameDetection.current) {
                 toast.success(`PRODUCT NAME ${data['product_name']}, SHOW EXPIRY`);
                 shownNameDetection.current = true;
               }
